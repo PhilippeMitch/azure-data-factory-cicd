@@ -1,0 +1,15 @@
+{
+	"name": "adlssource",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "devadls",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"container_name": "content"
+			}
+		},
+		"annotations": [],
+		"type": "AzureTable",
+		"schema": []
+	}
+}

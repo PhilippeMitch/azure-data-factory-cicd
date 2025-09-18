@@ -1,0 +1,9 @@
+{
+	"name": "dev-mitch-adf-cicd",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "31ec345f-a00a-4f3f-8e9a-6d7f57fba58d",
+		"tenantId": "f62bc628-c6f6-4055-aaa3-c6fa8a1c820b"
+	}
+}

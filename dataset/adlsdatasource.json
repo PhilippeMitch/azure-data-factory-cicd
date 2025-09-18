@@ -1,0 +1,64 @@
+{
+	"name": "adlsdatasource",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "adlsdatasource",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"container": "content",
+				"folder": "source-data"
+			}
+		},
+		"annotations": [],
+		"type": "Excel",
+		"typeProperties": {
+			"sheetName": "data.csv",
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"folderPath": "source-data",
+				"container": "content"
+			}
+		},
+		"schema": [
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			}
+		]
+	}
+}

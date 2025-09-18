@@ -20,6 +20,11 @@
 						"storeSettings": {
 							"type": "AzureBlobStorageReadSettings",
 							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "@pipeline().parameters.folderName",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*.xlsx",
 							"enablePartitionDiscovery": false
 						}
 					},
@@ -58,6 +63,12 @@
 				]
 			}
 		],
+		"parameters": {
+			"folderName": {
+				"type": "String",
+				"defaultValue": "source-data"
+			}
+		},
 		"annotations": []
 	}
 }

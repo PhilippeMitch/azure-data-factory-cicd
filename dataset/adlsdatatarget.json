@@ -1,0 +1,23 @@
+{
+	"name": "adlsdatatarget",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "adlsdatasource",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"container": "content",
+				"folder": "source-data"
+			}
+		},
+		"annotations": [],
+		"type": "Excel",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"folderPath": "target-data",
+				"container": "content"
+			}
+		},
+		"schema": []
+	}
+}

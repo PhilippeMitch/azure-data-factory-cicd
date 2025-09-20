@@ -44,7 +44,6 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    # environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
       - name: Set target Data Factory name
         id: set-target
@@ -56,20 +55,6 @@ jobs:
             exit 1
           else
             echo "✅ AZURE_CLIENT_ID is set"
-          fi
-
-          if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
-            echo "❌ AZURE_TENANT_ID is empty or not set"
-            exit 1
-          else
-            echo "✅ AZURE_TENANT_ID is set"
-          fi
-      
-          if [ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
-            echo "❌ AZURE_SUBSCRIPTION_ID is empty or not set"
-            exit 1
-          else
-            echo "✅ AZURE_SUBSCRIPTION_ID is set"
           fi
     
           echo "Client ID=${{ secrets.AZURE_CLIENT_ID }}"
@@ -103,17 +88,15 @@ jobs:
       - name: Debug deployment values
         run: |
           echo "Factory Name: ${{ steps.set-target.outputs.data_factory_name }}"
-          echo "Storage Name: ${{ steps.set-target.outputs.storage_name }}"
-          echo "Container Name: ${{ steps.set-target.outputs.container_name }}"
-          echo "Environment: ${{ steps.set-target.outputs.environment }}"
 
       - name: Debug ARM template
         run: |
           echo "=== ARMTemplateParametersForFactory.json ==="
           cat ARMTemplateParametersForFactory.json
           echo "=== GlobalParameters.json (if exists) ==="
-          if [ -f GlobalParameters.json ]; then
-            cat GlobalParameters.json
+          if [ -f *_GlobalParameters.json ]; then
+            ls -la *_GlobalParameters.json
+            cat *_GlobalParameters.json
           fi
 
       - name: Deploy to Data Factory
@@ -126,50 +109,133 @@ jobs:
           additionalParameters: |
             factoryName=${{ steps.set-target.outputs.data_factory_name }}
 
-      # Patch global parameters for prod
-      - name: Patch global parameters for prod
-        if: github.ref == 'refs/heads/main'
+      # Prepare global parameters based on environment
+      - name: Prepare global parameters
         run: |
-          echo "Patching global parameters with prod values..."
-          jq '.globalParameters.storage_name.value = "${{ secrets.STORAGE_NAME }}" |
-              .globalParameters.container_name.value = "${{ secrets.CONTAINER_NAME }}" |
-              .globalParameters.environment.value = "prod"' \
-              dev-mitch-adf-cicd_GlobalParameters.json > GlobalParameters.json
-
-          echo "New Global Parameter"
-          cat GlobalParameters.json
-
-      # Use unmodified dev global parameters for non-prod
-      - name: Use dev global parameters
-        if: github.ref != 'refs/heads/main'
-        run: cp dev-mitch-adf-cicd_GlobalParameters.json GlobalParameters.json
-
-
-      - name: Validate GlobalParameters.json
-        run: |
-          if [ -f GlobalParameters.json ]; then
-            if ! jq -e . >/dev/null 2>&1 <<< "$(cat GlobalParameters.json)"; then
-              echo "❌ GlobalParameters.json is invalid JSON"
-              exit 1
+          echo "Preparing global parameters for ${{ steps.set-target.outputs.environment }} environment..."
+          
+          # Find the global parameters file (it has the dev factory name prefix)
+          GLOBAL_PARAMS_FILE=$(find . -name "*_GlobalParameters.json" -type f | head -1)
+          
+          if [ -f "$GLOBAL_PARAMS_FILE" ]; then
+            echo "Found global parameters file: $GLOBAL_PARAMS_FILE"
+            
+            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              echo "Updating parameters for production environment..."
+              
+              # Create production global parameters
+              jq --arg storage_name "${{ secrets.STORAGE_NAME }}" \
+                 --arg container_name "${{ secrets.CONTAINER_NAME }}" \
+                 '.globalParameters.storage_name.value = $storage_name |
+                  .globalParameters.container_name.value = $container_name |
+                  .globalParameters.environment.value = "prod"' \
+                  "$GLOBAL_PARAMS_FILE" > prod_global_params.json
+              
+              echo "Production global parameters:"
+              cat prod_global_params.json
+            else
+              echo "Using development global parameters..."
+              cp "$GLOBAL_PARAMS_FILE" dev_global_params.json
+              
+              echo "Development global parameters:"
+              cat dev_global_params.json
             fi
-            echo "✅ GlobalParameters.json is valid"
           else
-            echo "❌ GlobalParameters.json not found"
+            echo "❌ No global parameters file found"
+            ls -la
             exit 1
           fi
 
       - name: Install Azure Data Factory extension
         run: |
-          sudo az upgrade --yes
-          az extension add --name datafactory --upgrade
+          az extension add --name datafactory --upgrade --only-show-errors
 
-      - name: Deploy global parameters
+      - name: Deploy global parameters using REST API
         run: |
           echo "Deploying global parameters to ${{ steps.set-target.outputs.data_factory_name }}"
-          az deployment group create \
-            --resource-group DataOps \
-            --template-file GlobalParameters.json \
-            --parameters GlobalParameters.json \
-            --mode Incremental \
-            --verbose
           
+          # Determine which parameters file to use
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            PARAMS_FILE="prod_global_params.json"
+          else
+            PARAMS_FILE="dev_global_params.json"
+          fi
+          
+          echo "Using parameters file: $PARAMS_FILE"
+          
+          # Validate the parameters file exists and is valid JSON
+          if [ ! -f "$PARAMS_FILE" ]; then
+            echo "❌ Parameters file not found: $PARAMS_FILE"
+            exit 1
+          fi
+          
+          if ! jq -e . >/dev/null 2>&1 < "$PARAMS_FILE"; then
+            echo "❌ Invalid JSON in parameters file"
+            cat "$PARAMS_FILE"
+            exit 1
+          fi
+          
+          # Extract just the globalParameters section
+          GLOBAL_PARAMS=$(jq '.globalParameters' "$PARAMS_FILE")
+          
+          if [ "$GLOBAL_PARAMS" = "null" ] || [ -z "$GLOBAL_PARAMS" ]; then
+            echo "❌ No globalParameters found in file"
+            exit 1
+          fi
+          
+          echo "Global parameters to deploy:"
+          echo "$GLOBAL_PARAMS" | jq '.'
+          
+          # Get access token
+          TOKEN=$(az account get-access-token --query accessToken -o tsv)
+          
+          if [ -z "$TOKEN" ]; then
+            echo "❌ Failed to get access token"
+            exit 1
+          fi
+          
+          # Create the payload
+          PAYLOAD=$(jq -n --argjson props "$GLOBAL_PARAMS" '{"properties": $props}')
+          
+          echo "Payload to send:"
+          echo "$PAYLOAD" | jq '.'
+          
+          # Deploy using REST API
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X PUT \
+            "https://management.azure.com/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/DataOps/providers/Microsoft.DataFactory/factories/${{ steps.set-target.outputs.data_factory_name }}/globalParameters/default?api-version=2018-06-01" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+          
+          # Extract HTTP status code
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          RESPONSE_BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $RESPONSE_BODY"
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Global parameters deployed successfully!"
+          else
+            echo "❌ Failed to deploy global parameters"
+            echo "Response body: $RESPONSE_BODY"
+            exit 1
+          fi
+
+      - name: Verify global parameters deployment
+        run: |
+          echo "Verifying global parameters in ${{ steps.set-target.outputs.data_factory_name }}"
+          
+          # Get current global parameters
+          CURRENT_PARAMS=$(az datafactory factory show \
+            --name ${{ steps.set-target.outputs.data_factory_name }} \
+            --resource-group DataOps \
+            --query "globalParameters" \
+            --output json)
+          
+          echo "Current global parameters in target factory:"
+          echo "$CURRENT_PARAMS" | jq '.'
+          
+          # Count parameters
+          PARAM_COUNT=$(echo "$CURRENT_PARAMS" | jq '. | length')
+          echo "Total parameters in target factory: $PARAM_COUNT"

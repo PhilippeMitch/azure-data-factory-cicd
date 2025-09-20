@@ -1,5 +1,17 @@
 {
 	"name": "dev-mitch-adf-cicd",
+	"properties": {
+		"globalParameters": {
+			"storage_name": {
+				"type": "string",
+				"value": "quantumln"
+			},
+			"container_name": {
+				"type": "string",
+				"value": "content"
+			}
+		}
+	},
 	"location": "eastus",
 	"identity": {
 		"type": "SystemAssigned",

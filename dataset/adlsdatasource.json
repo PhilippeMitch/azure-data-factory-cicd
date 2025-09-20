@@ -6,7 +6,8 @@
 			"type": "LinkedServiceReference",
 			"parameters": {
 				"container": "content",
-				"folder": "source-data"
+				"folder": "source-data",
+				"storage": "quantumln"
 			}
 		},
 		"annotations": [],

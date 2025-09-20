@@ -32,7 +32,7 @@ jobs:
         working-directory: ${{ github.workspace }}/build
 
       - name: Validate and Generate ARM template
-        run: npm run build export ${{ github.workspace }}/ /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/MLOps/providers/Microsoft.DataFactory/factories/dev-mitch-adf-cicd ExportedArmTemplate
+        run: npm run build export ${{ github.workspace }}/ /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/MLOps/providers/Microsoft.DataFactory/factories/dev-mitch-adf-cicd ExportedArmTemplate --global-parameters
         working-directory: ${{ github.workspace }}/build
 
       - name: Upload ARM template artifact
@@ -126,11 +126,25 @@ jobs:
           additionalParameters: |
             factoryName=${{ steps.set-target.outputs.data_factory_name }}
 
-      # NEW STEP: Deploy global parameters
+      # Patch global parameters for prod
+      - name: Patch global parameters for prod
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Patching global parameters with prod values..."
+          jq '.globalParameters.storage_name.value = "${{ secrets.STORAGE_NAME }}" |
+              .globalParameters.container_name.value = "${{ secrets.CONTAINER_NAME }}" |
+              .globalParameters.environment.value = "prod"' \
+              dev-mitch-adf-cicd_GlobalParameters.json > GlobalParameters.json
+
+      # Use unmodified dev global parameters for non-prod
+      - name: Use dev global parameters
+        if: github.ref != 'refs/heads/main'
+        run: cp dev-mitch-adf-cicd_GlobalParameters.json GlobalParameters.json
+
       - name: Deploy global parameters
         run: |
-          echo "Deploying global parameters..."
+          echo "Deploying global parameters to ${{ steps.set-target.outputs.data_factory_name }}"
           az datafactory global-parameter create \
             --factory-name ${{ steps.set-target.outputs.data_factory_name }} \
             --resource-group DataOps \
-            --file dev-mitch-adf-cicd_GlobalParameters.json
+            --file GlobalParameters.json

@@ -246,7 +246,7 @@ jobs:
           echo "Verifying global parameters in ${{ steps.set-target.outputs.data_factory_name }}"
           
           # Get current global parameters
-          CURRENT_PARAMS=$(az datafactory factory show \
+          CURRENT_PARAMS=$(az datafactory show \
             --name ${{ steps.set-target.outputs.data_factory_name }} \
             --resource-group DataOps \
             --query "globalParameters" \

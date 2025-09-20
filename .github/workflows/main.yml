@@ -51,7 +51,9 @@ jobs:
         run: |
           echo "Listing secrets name:"
           echo "storage_name=${{ secrets.STORAGE_NAME }}"
-          echo "Storage name: ${{ steps.set-target.outputs.storage_name }}"
+          echo "Client ID=${{ secrets.AZURE_CLIENT_ID }}"
+          echo "Tenant ID=${{ secrets.AZURE_TENANT_ID }}"
+          echo "Subscription=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "data_factory_name=prod-mitch-adf-cicd" >> $GITHUB_OUTPUT
             echo "storage_name=${{ secrets.STORAGE_NAME }}" >> $GITHUB_OUTPUT

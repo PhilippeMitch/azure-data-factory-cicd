@@ -115,6 +115,6 @@ jobs:
           armTemplateFile: ARMTemplateForFactory.json
           armTemplateParametersFile: ARMTemplateParametersForFactory.json
           additionalParameters: |
-            -globalParam:storage_name=${{ steps.set-target.outputs.storage_name }}
-            -globalParam:container_name=${{ steps.set-target.outputs.container_name }}
-            -globalParam:environment=${{ steps.set-target.outputs.environment }}
+            globalParameters.storage_name=${{ steps.set-target.outputs.storage_name }}
+            globalParameters.container_name=${{ steps.set-target.outputs.container_name }}
+            globalParameters.environment=${{ steps.set-target.outputs.environment }}

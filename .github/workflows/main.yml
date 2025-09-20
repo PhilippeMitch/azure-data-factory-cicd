@@ -49,14 +49,14 @@ jobs:
         id: set-target
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "data_factory_name=prod-adf-cicd" >> $GITHUB_OUTPUT
-            echo "storage_name=${{ secrets.PROD_STORAGE_NAME }}" >> $GITHUB_OUTPUT
-            echo "container_name=${{ secrets.PROD_CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            echo "data_factory_name=prod-mitch-adf-cicd" >> $GITHUB_OUTPUT
+            echo "storage_name=${{ secrets.STORAGE_NAME }}" >> $GITHUB_OUTPUT
+            echo "container_name=${{ secrets.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
             echo "environment=prod" >> $GITHUB_OUTPUT
           else
-            echo "data_factory_name=dev-adf-cicd" >> $GITHUB_OUTPUT
-            echo "storage_name=${{ secrets.DEV_STORAGE_NAME }}" >> $GITHUB_OUTPUT
-            echo "container_name=${{ secrets.DEV_CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            echo "data_factory_name=dev-mitch-adf-cicd" >> $GITHUB_OUTPUT
+            echo "storage_name=${{ secrets.STORAGE_NAME }}" >> $GITHUB_OUTPUT
+            echo "container_name=${{ secrets.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
             echo "environment=dev" >> $GITHUB_OUTPUT
           fi
           

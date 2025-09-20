@@ -136,6 +136,9 @@ jobs:
               .globalParameters.environment.value = "prod"' \
               dev-mitch-adf-cicd_GlobalParameters.json > GlobalParameters.json
 
+          echo "New Global Parameter"
+          cat GlobalParameters.json
+
       # Use unmodified dev global parameters for non-prod
       - name: Use dev global parameters
         if: github.ref != 'refs/heads/main'
@@ -166,5 +169,7 @@ jobs:
           az deployment group create \
             --resource-group DataOps \
             --template-file GlobalParameters.json \
-            --mode Incremental
+            --parameters GlobalParameters.json \
+            --mode Incremental \
+            --verbose
           

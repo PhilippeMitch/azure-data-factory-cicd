@@ -151,5 +151,4 @@ jobs:
           az deployment group create \
             --resource-group DataOps \
             --template-file GlobalParameters.json \
-            --parameters factoryName=${{ steps.set-target.outputs.data_factory_name }} \
             --mode Incremental

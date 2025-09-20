@@ -119,23 +119,42 @@ jobs:
           
           if [ -f "$GLOBAL_PARAMS_FILE" ]; then
             echo "Found global parameters file: $GLOBAL_PARAMS_FILE"
+            echo "Original file content:"
+            cat "$GLOBAL_PARAMS_FILE"
             
             if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
               echo "Updating parameters for production environment..."
               
-              # Create production global parameters
+              # Create production global parameters with proper type and value structure
               jq --arg storage_name "${{ secrets.STORAGE_NAME }}" \
                  --arg container_name "${{ secrets.CONTAINER_NAME }}" \
                  '.globalParameters.storage_name.value = $storage_name |
                   .globalParameters.container_name.value = $container_name |
-                  .globalParameters.environment.value = "prod"' \
+                  .globalParameters.environment.value = "prod" |
+                  # Ensure all parameters have type field if missing
+                  .globalParameters = (.globalParameters | to_entries | map(
+                    if .value | has("type") | not then
+                      .value = {"type": "String", "value": .value.value}
+                    else
+                      .
+                    end
+                  ) | from_entries)' \
                   "$GLOBAL_PARAMS_FILE" > prod_global_params.json
               
               echo "Production global parameters:"
               cat prod_global_params.json
             else
               echo "Using development global parameters..."
-              cp "$GLOBAL_PARAMS_FILE" dev_global_params.json
+              
+              # Ensure dev parameters also have proper type structure
+              jq '.globalParameters = (.globalParameters | to_entries | map(
+                    if .value | has("type") | not then
+                      .value = {"type": "String", "value": .value.value}
+                    else
+                      .
+                    end
+                  ) | from_entries)' \
+                  "$GLOBAL_PARAMS_FILE" > dev_global_params.json
               
               echo "Development global parameters:"
               cat dev_global_params.json

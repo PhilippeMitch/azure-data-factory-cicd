@@ -141,6 +141,10 @@ jobs:
         if: github.ref != 'refs/heads/main'
         run: cp dev-mitch-adf-cicd_GlobalParameters.json GlobalParameters.json
 
+      - name: Install Azure Data Factory extension
+        run: |
+          az extension add --name datafactory
+
       - name: Deploy global parameters
         run: |
           echo "Deploying global parameters to ${{ steps.set-target.outputs.data_factory_name }}"

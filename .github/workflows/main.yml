@@ -163,12 +163,33 @@ jobs:
       - name: Deploy global parameters
         run: |
           echo "Deploying global parameters to ${{ steps.set-target.outputs.data_factory_name }}"
-          if [ -f GlobalParameters.json ]; then
-            az datafactory global-parameter set \
-              --factory-name ${{ steps.set-target.outputs.data_factory_name }} \
-              --resource-group DataOps \
-              --global-parameter @GlobalParameters.json
-          else
-            echo "❌ GlobalParameters.json not found"
-            exit 1
-          fi
+          
+          # Example: update "storage_name" parameter
+          JSON_PAYLOAD=$(jq -n \
+            --arg type "String" \
+            --arg value "${{ steps.set-target.outputs.storage_name }}" \
+            '{properties: {storage_name: {type: $type, value: $value}}}')
+      
+          az rest --method PUT \
+            --uri "https://management.azure.com/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/DataOps/providers/Microsoft.DataFactory/factories/${{ steps.set-target.outputs.data_factory_name }}/globalParameters/storage_name?api-version=2018-06-01" \
+            --body "$JSON_PAYLOAD"
+      
+          # Example: update "container_name" parameter
+          JSON_PAYLOAD=$(jq -n \
+            --arg type "String" \
+            --arg value "${{ steps.set-target.outputs.container_name }}" \
+            '{properties: {container_name: {type: $type, value: $value}}}')
+      
+          az rest --method PUT \
+            --uri "https://management.azure.com/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/DataOps/providers/Microsoft.DataFactory/factories/${{ steps.set-target.outputs.data_factory_name }}/globalParameters/container_name?api-version=2018-06-01" \
+            --body "$JSON_PAYLOAD"
+      
+          # Example: update "environment" parameter
+          JSON_PAYLOAD=$(jq -n \
+            --arg type "String" \
+            --arg value "${{ steps.set-target.outputs.environment }}" \
+            '{properties: {environment: {type: $type, value: $value}}}')
+      
+          az rest --method PUT \
+            --uri "https://management.azure.com/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/DataOps/providers/Microsoft.DataFactory/factories/${{ steps.set-target.outputs.data_factory_name }}/globalParameters/environment?api-version=2018-06-01" \
+            --body "$JSON_PAYLOAD"

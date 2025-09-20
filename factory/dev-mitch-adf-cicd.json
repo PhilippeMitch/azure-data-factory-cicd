@@ -5,6 +5,10 @@
 			"storage_name": {
 				"type": "string",
 				"value": "quantumln"
+			},
+			"container_name": {
+				"type": "string",
+				"value": "content"
 			}
 		}
 	},

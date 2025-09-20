@@ -100,6 +100,13 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
+      - name: Debug deployment values
+        run: |
+          echo "Factory Name: ${{ steps.set-target.outputs.data_factory_name }}"
+          echo "Storage Name: ${{ steps.set-target.outputs.storage_name }}"
+          echo "Container Name: ${{ steps.set-target.outputs.container_name }}"
+          echo "Environment: ${{ steps.set-target.outputs.environment }}"
+
       - name: Deploy to Data Factory
         uses: Azure/data-factory-deploy-action@v1.2.0
         with:

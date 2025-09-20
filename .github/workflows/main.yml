@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 permissions:
   id-token: write
@@ -12,6 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -42,7 +44,49 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    # environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
+      - name: Set target Data Factory name
+        id: set-target
+        run: |
+          echo "Listing secrets name:"
+          echo "storage_name=${{ secrets.STORAGE_NAME }}"
+          if [ -z "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+            echo "❌ AZURE_CLIENT_ID is empty or not set"
+            exit 1
+          else
+            echo "✅ AZURE_CLIENT_ID is set"
+          fi
+
+          if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
+            echo "❌ AZURE_TENANT_ID is empty or not set"
+            exit 1
+          else
+            echo "✅ AZURE_TENANT_ID is set"
+          fi
+      
+          if [ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
+            echo "❌ AZURE_SUBSCRIPTION_ID is empty or not set"
+            exit 1
+          else
+            echo "✅ AZURE_SUBSCRIPTION_ID is set"
+          fi
+    
+          echo "Client ID=${{ secrets.AZURE_CLIENT_ID }}"
+          echo "Tenant ID=${{ secrets.AZURE_TENANT_ID }}"
+          echo "Subscription=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "data_factory_name=prod-mitch-adf-cicd" >> $GITHUB_OUTPUT
+            echo "storage_name=${{ secrets.STORAGE_NAME }}" >> $GITHUB_OUTPUT
+            echo "container_name=${{ secrets.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "data_factory_name=dev-mitch-adf-cicd" >> $GITHUB_OUTPUT
+            echo "storage_name=${{ secrets.STORAGE_NAME }}" >> $GITHUB_OUTPUT
+            echo "container_name=${{ secrets.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+          
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
@@ -56,11 +100,37 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
+      - name: Debug deployment values
+        run: |
+          echo "Factory Name: ${{ steps.set-target.outputs.data_factory_name }}"
+          echo "Storage Name: ${{ steps.set-target.outputs.storage_name }}"
+          echo "Container Name: ${{ steps.set-target.outputs.container_name }}"
+          echo "Environment: ${{ steps.set-target.outputs.environment }}"
+
+      - name: Debug ARM template
+        run: |
+          echo "=== ARMTemplateParametersForFactory.json ==="
+          cat ARMTemplateParametersForFactory.json
+          echo "=== GlobalParameters.json (if exists) ==="
+          if [ -f GlobalParameters.json ]; then
+            cat GlobalParameters.json
+          fi
+
       - name: Deploy to Data Factory
         uses: Azure/data-factory-deploy-action@v1.2.0
         with:
           resourceGroupName: DataOps
-          dataFactoryName: prod-mitch-adf-cicd
+          dataFactoryName: ${{ steps.set-target.outputs.data_factory_name }}
           armTemplateFile: ARMTemplateForFactory.json
           armTemplateParametersFile: ARMTemplateParametersForFactory.json
-          # additionalParameters: 'factoryName=Test-ADF-111' # optional, if needed for dynamic replacements
+          additionalParameters: |
+            factoryName=${{ steps.set-target.outputs.data_factory_name }}
+
+      # NEW STEP: Deploy global parameters
+      - name: Deploy global parameters
+        run: |
+          echo "Deploying global parameters..."
+          az datafactory global-parameter create \
+            --factory-name ${{ steps.set-target.outputs.data_factory_name }} \
+            --resource-group DataOps \
+            --file dev-mitch-adf-cicd_GlobalParameters.json

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 permissions:
   id-token: write
@@ -42,7 +43,23 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
+      - name: Set target Data Factory name
+        id: set-target
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "data_factory_name=prod-adf-cicd" >> $GITHUB_OUTPUT
+            echo "storage_name=${{ secrets.PROD_STORAGE_NAME }}" >> $GITHUB_OUTPUT
+            echo "container_name=${{ secrets.PROD_CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "data_factory_name=dev-adf-cicd" >> $GITHUB_OUTPUT
+            echo "storage_name=${{ secrets.DEV_STORAGE_NAME }}" >> $GITHUB_OUTPUT
+            echo "container_name=${{ secrets.DEV_CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+          
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
@@ -60,7 +77,11 @@ jobs:
         uses: Azure/data-factory-deploy-action@v1.2.0
         with:
           resourceGroupName: DataOps
-          dataFactoryName: prod-mitch-adf-cicd
+          dataFactoryName: ${{ steps.set-target.outputs.data_factory_name }}
           armTemplateFile: ARMTemplateForFactory.json
           armTemplateParametersFile: ARMTemplateParametersForFactory.json
-          # additionalParameters: 'factoryName=Test-ADF-111' # optional, if needed for dynamic replacements
+          additionalParameters: |
+            factoryName=${{ steps.set-target.outputs.data_factory_name }}
+            globalParameters.storage_name.value=${{ steps.set-target.outputs.storage_name }}
+            globalParameters.container_name.value=${{ steps.set-target.outputs.container_name }}
+            globalParameters.environment.value=${{ steps.set-target.outputs.environment }}

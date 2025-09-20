@@ -9,6 +9,10 @@
 			"container_name": {
 				"type": "string",
 				"value": "content"
+			},
+			"environment": {
+				"type": "string",
+				"value": "dev"
 			}
 		}
 	},

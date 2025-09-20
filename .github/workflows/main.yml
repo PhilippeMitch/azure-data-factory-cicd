@@ -148,7 +148,8 @@ jobs:
       - name: Deploy global parameters
         run: |
           echo "Deploying global parameters to ${{ steps.set-target.outputs.data_factory_name }}"
-          az datafactory global-parameter create \
-            --factory-name ${{ steps.set-target.outputs.data_factory_name }} \
+          az deployment group create \
             --resource-group DataOps \
-            --file GlobalParameters.json
+            --template-file GlobalParameters.json \
+            --parameters factoryName=${{ steps.set-target.outputs.data_factory_name }} \
+            --mode Incremental

@@ -107,6 +107,16 @@ jobs:
           echo "Container Name: ${{ steps.set-target.outputs.container_name }}"
           echo "Environment: ${{ steps.set-target.outputs.environment }}"
 
+      - name: Debug ARM template
+        run: |
+          echo "=== ARMTemplateParametersForFactory.json ==="
+          cat ARMTemplateParametersForFactory.json
+          echo "=== GlobalParameters.json (if exists) ==="
+          ls -l
+          if [ -f GlobalParameters.json ]; then
+            cat GlobalParameters.json
+          fi
+
       - name: Deploy to Data Factory
         uses: Azure/data-factory-deploy-action@v1.2.0
         with:

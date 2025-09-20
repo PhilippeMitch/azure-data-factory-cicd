@@ -49,6 +49,9 @@ jobs:
       - name: Set target Data Factory name
         id: set-target
         run: |
+          echo "Listing secrets name:"
+          echo "storage_name=${{ secrets.STORAGE_NAME }}"
+          echo "Storage name: ${{ steps.set-target.outputs.storage_name }}"
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "data_factory_name=prod-mitch-adf-cicd" >> $GITHUB_OUTPUT
             echo "storage_name=${{ secrets.STORAGE_NAME }}" >> $GITHUB_OUTPUT

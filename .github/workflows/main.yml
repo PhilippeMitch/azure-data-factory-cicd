@@ -141,14 +141,35 @@ jobs:
         if: github.ref != 'refs/heads/main'
         run: cp dev-mitch-adf-cicd_GlobalParameters.json GlobalParameters.json
 
+
+      - name: Validate GlobalParameters.json
+        run: |
+          if [ -f GlobalParameters.json ]; then
+            if ! jq -e . >/dev/null 2>&1 <<< "$(cat GlobalParameters.json)"; then
+              echo "❌ GlobalParameters.json is invalid JSON"
+              exit 1
+            fi
+            echo "✅ GlobalParameters.json is valid"
+          else
+            echo "❌ GlobalParameters.json not found"
+            exit 1
+          fi
+
       - name: Install Azure Data Factory extension
         run: |
-          az extension add --name datafactory
+          sudo az upgrade --yes
+          az extension add --name datafactory --upgrade
 
       - name: Deploy global parameters
         run: |
           echo "Deploying global parameters to ${{ steps.set-target.outputs.data_factory_name }}"
-          az deployment group create \
-            --resource-group DataOps \
-            --template-file GlobalParameters.json \
-            --mode Incremental
+          if [ -f GlobalParameters.json ]; then
+            az deployment group create \
+              --resource-group DataOps \
+              --template-file GlobalParameters.json \
+              --mode Incremental \
+              --output json
+          else
+            echo "❌ GlobalParameters.json not found"
+            exit 1
+          fi
